@@ -26,10 +26,27 @@ const promos: Promo[] = [
 		commandTooltip: 'Sale: Save up to 80% on GitLens Pro - lowest price of the year!',
 	},
 	{
+		key: 'launchpad',
+		code: 'LAUNCHPAD',
+		states: [
+			SubscriptionState.Free,
+			SubscriptionState.FreeInPreviewTrial,
+			SubscriptionState.FreePreviewTrialExpired,
+			SubscriptionState.FreePlusInTrial,
+			SubscriptionState.FreePlusTrialExpired,
+			SubscriptionState.FreePlusTrialReactivationEligible,
+		],
+		expiresOn: new Date('2024-09-25T06:59:00.000Z').getTime(),
+		// TODO: Finalize messaging
+		commandTooltip: 'Launchpad Sale: Save up to --% on GitLens Pro - lowest price of the year!',
+	},
+
+	{
 		key: 'pro50',
 		states: [
 			SubscriptionState.Free,
 			SubscriptionState.FreeInPreviewTrial,
+			SubscriptionState.FreePreviewTrialExpired,
 			SubscriptionState.FreePlusInTrial,
 			SubscriptionState.FreePlusTrialExpired,
 			SubscriptionState.FreePlusTrialReactivationEligible,
@@ -38,19 +55,21 @@ const promos: Promo[] = [
 	},
 ];
 
-export function getApplicablePromo(state: number | undefined): Promo | undefined {
+export function getApplicablePromo(state: number | undefined, key?: PromoKeys): Promo | undefined {
 	if (state == null) return undefined;
 
-	const now = Date.now();
 	for (const promo of promos) {
-		if (
-			(promo.states == null || promo.states.includes(state)) &&
-			(promo.expiresOn == null || promo.expiresOn > now) &&
-			(promo.startsOn == null || promo.startsOn < now)
-		) {
-			return promo;
-		}
+		if ((key == null || key === promo.key) && isPromoApplicable(promo, state)) return promo;
 	}
 
 	return undefined;
+}
+
+function isPromoApplicable(promo: Promo, state: number): boolean {
+	const now = Date.now();
+	return (
+		(promo.states == null || promo.states.includes(state)) &&
+		(promo.expiresOn == null || promo.expiresOn > now) &&
+		(promo.startsOn == null || promo.startsOn < now)
+	);
 }

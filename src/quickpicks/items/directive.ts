@@ -1,5 +1,4 @@
 import type { QuickPickItem, ThemeIcon, Uri } from 'vscode';
-import type { Subscription } from '../../plus/gk/account/subscription';
 
 export enum Directive {
 	Back,
@@ -32,7 +31,6 @@ export function createDirectiveQuickPickItem(
 		description?: string;
 		detail?: string;
 		iconPath?: Uri | { light: Uri; dark: Uri } | ThemeIcon;
-		subscription?: Subscription;
 		onDidSelect?: () => void | Promise<void>;
 	},
 ) {
