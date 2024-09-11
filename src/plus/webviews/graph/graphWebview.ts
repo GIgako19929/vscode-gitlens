@@ -1057,14 +1057,16 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 	}
 
 	private async getCommitTooltip(commit: GitCommit, cancellation: CancellationToken) {
-		const [remotesResult, _] = await Promise.allSettled([
+		const [remotesResult, _, branchNamesResult] = await Promise.allSettled([
 			this.container.git.getBestRemotesWithProviders(commit.repoPath),
 			commit.ensureFullDetails(),
+			this.container.git.getCommitBranches(commit.repoPath, commit.sha),
 		]);
 
 		if (cancellation.isCancellationRequested) throw new CancellationError();
 
 		const remotes = getSettledValue(remotesResult, []);
+		const branchNames = getSettledValue(branchNamesResult, []);
 		const [remote] = remotes;
 
 		let enrichedAutolinks;
@@ -1072,7 +1074,7 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 
 		if (remote?.hasIntegration()) {
 			const [enrichedAutolinksResult, prResult] = await Promise.allSettled([
-				pauseOnCancelOrTimeoutMapTuplePromise(commit.getEnrichedAutolinks(remote), cancellation),
+				pauseOnCancelOrTimeoutMapTuplePromise(commit.getEnrichedAutolinks(remote, branchNames), cancellation),
 				commit.getAssociatedPullRequest(remote),
 			]);
 
@@ -1107,10 +1109,13 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 		return tooltip;
 	}
 
-	private getBranchAndTagTips(sha: string, options?: { compact?: boolean; icons?: boolean }): string | undefined {
-		if (this._graph == null) return undefined;
+	private findRow(sha: string) {
+		const row = this._graph?.rows.find(r => r.sha === sha);
+		return row ?? null;
+	}
 
-		const row = this._graph.rows.find(r => r.sha === sha);
+	private getBranchAndTagTips(sha: string, options?: { compact?: boolean; icons?: boolean }): string | undefined {
+		const row = this.findRow(sha);
 		if (row == null) return undefined;
 
 		const tips = [];

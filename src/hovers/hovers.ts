@@ -211,6 +211,7 @@ export async function detailsMessage(
 		options?.cancellation,
 		options?.timeout,
 	);
+	const branchNames = await container.git.getCommitBranches(commit.repoPath, commit.ref);
 
 	let remotes: GitRemote<RemoteProvider>[] | undefined;
 	let remote: GitRemote<RemoteProvider> | undefined;
@@ -244,7 +245,7 @@ export async function detailsMessage(
 		await Promise.allSettled([
 			autolinks
 				? pauseOnCancelOrTimeoutMapTuplePromise(
-						options?.enrichedAutolinks ?? commit.getEnrichedAutolinks(remote),
+						options?.enrichedAutolinks ?? commit.getEnrichedAutolinks(remote, branchNames),
 						options?.cancellation,
 						options?.timeout,
 				  )
@@ -274,6 +275,7 @@ export async function detailsMessage(
 	const presence = getSettledValue(presenceResult);
 	const previousLineComparisonUris = getSettledValue(previousLineComparisonUrisResult);
 
+	console.log('hover', { enrichedResult: enrichedResult });
 	const details = await CommitFormatter.fromTemplateAsync(options.format, commit, {
 		enrichedAutolinks: enrichedResult?.value != null && !enrichedResult.paused ? enrichedResult.value : undefined,
 		dateFormat: options.dateFormat === null ? 'MMMM Do, YYYY h:mma' : options.dateFormat,

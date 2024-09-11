@@ -155,10 +155,11 @@ export class Autolinks implements Disposable {
 		}
 	}
 
-	async getAutolinks(message: string, remote?: GitRemote): Promise<Map<string, Autolink>>;
+	async getAutolinks(message: string, remote?: GitRemote, branchNames?: string[]): Promise<Map<string, Autolink>>;
 	async getAutolinks(
 		message: string,
 		remote: GitRemote,
+		branchNames?: string[],
 		// eslint-disable-next-line @typescript-eslint/unified-signatures
 		options?: { excludeCustom?: boolean },
 	): Promise<Map<string, Autolink>>;
@@ -171,6 +172,7 @@ export class Autolinks implements Disposable {
 	async getAutolinks(
 		message: string,
 		remote?: GitRemote,
+		branchNames?: string[],
 		options?: { excludeCustom?: boolean },
 	): Promise<Map<string, Autolink>> {
 		const refsets: [
@@ -214,11 +216,12 @@ export class Autolinks implements Disposable {
 
 		let match;
 		let num;
+		const stringToSearch = [message, ...(branchNames ?? [])].join('|');
 		for (const [provider, refs] of refsets) {
 			for (const ref of refs) {
 				if (!isCacheable(ref)) {
 					if (isDynamic(ref)) {
-						ref.parse(message, autolinks);
+						ref.parse(stringToSearch, autolinks);
 					}
 					continue;
 				}
@@ -226,7 +229,7 @@ export class Autolinks implements Disposable {
 				ensureCachedRegex(ref, 'plaintext');
 
 				do {
-					match = ref.messageRegex.exec(message);
+					match = ref.messageRegex.exec(stringToSearch);
 					if (match == null) break;
 
 					[, , , num] = match;
@@ -261,24 +264,28 @@ export class Autolinks implements Disposable {
 	async getEnrichedAutolinks(
 		message: string,
 		remote: GitRemote | undefined,
+		branchNames: string[] | undefined,
 	): Promise<Map<string, EnrichedAutolink> | undefined>;
 	async getEnrichedAutolinks(
 		autolinks: Map<string, Autolink>,
 		remote: GitRemote | undefined,
+		branchNames: string[] | undefined,
 	): Promise<Map<string, EnrichedAutolink> | undefined>;
 	@debug<Autolinks['getEnrichedAutolinks']>({
 		args: {
 			0: messageOrAutolinks =>
 				typeof messageOrAutolinks === 'string' ? '<message>' : `autolinks=${messageOrAutolinks.size}`,
 			1: remote => remote?.remoteKey,
+			2: branchNames => branchNames?.length,
 		},
 	})
 	async getEnrichedAutolinks(
 		messageOrAutolinks: string | Map<string, Autolink>,
 		remote: GitRemote | undefined,
+		branchNames: string[] | undefined,
 	): Promise<Map<string, EnrichedAutolink> | undefined> {
 		if (typeof messageOrAutolinks === 'string') {
-			messageOrAutolinks = await this.getAutolinks(messageOrAutolinks, remote);
+			messageOrAutolinks = await this.getAutolinks(messageOrAutolinks, remote, branchNames);
 		}
 		if (messageOrAutolinks.size === 0) return undefined;
 
@@ -621,19 +628,19 @@ function ensureCachedRegex(ref: CacheableAutolinkReference, outputFormat: 'html'
 	if (outputFormat === 'markdown' && ref.messageMarkdownRegex == null) {
 		// Extra `\\\\` in `\\\\\\[` is because the markdown is escaped
 		ref.messageMarkdownRegex = new RegExp(
-			`(^|\\s|\\(|\\[|\\{)(${escapeRegex(encodeHtmlWeak(escapeMarkdown(ref.prefix)))}(${
+			`(^|\\W|\\(|\\[|\\{)(${escapeRegex(encodeHtmlWeak(escapeMarkdown(ref.prefix)))}(${
 				ref.alphanumeric ? '\\w' : '\\d'
 			}+))\\b`,
 			ref.ignoreCase ? 'gi' : 'g',
 		);
 	} else if (outputFormat === 'html' && ref.messageHtmlRegex == null) {
 		ref.messageHtmlRegex = new RegExp(
-			`(^|\\s|\\(|\\[|\\{)(${escapeRegex(encodeHtmlWeak(ref.prefix))}(${ref.alphanumeric ? '\\w' : '\\d'}+))\\b`,
+			`(^|\\W|\\(|\\[|\\{)(${escapeRegex(encodeHtmlWeak(ref.prefix))}(${ref.alphanumeric ? '\\w' : '\\d'}+))\\b`,
 			ref.ignoreCase ? 'gi' : 'g',
 		);
 	} else if (ref.messageRegex == null) {
 		ref.messageRegex = new RegExp(
-			`(^|\\s|\\(|\\[|\\{)(${escapeRegex(ref.prefix)}(${ref.alphanumeric ? '\\w' : '\\d'}+))\\b`,
+			`(^|\\W|\\(|\\[|\\{)(${escapeRegex(ref.prefix)}(${ref.alphanumeric ? '\\w' : '\\d'}+))\\b`,
 			ref.ignoreCase ? 'gi' : 'g',
 		);
 	}

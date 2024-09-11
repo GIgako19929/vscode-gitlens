@@ -435,7 +435,10 @@ export class GitCommit implements GitRevisionReference {
 		);
 	}
 
-	async getEnrichedAutolinks(remote?: GitRemote<RemoteProvider>): Promise<Map<string, EnrichedAutolink> | undefined> {
+	async getEnrichedAutolinks(
+		remote: undefined | GitRemote<RemoteProvider>,
+		branchNames: string[],
+	): Promise<Map<string, EnrichedAutolink> | undefined> {
 		if (this.isUncommitted) return undefined;
 
 		remote ??= await this.container.git.getBestRemoteWithIntegration(this.repoPath);
@@ -447,7 +450,7 @@ export class GitCommit implements GitRevisionReference {
 			await this.ensureFullDetails();
 		}
 
-		return this.container.autolinks.getEnrichedAutolinks(this.message ?? this.summary, remote);
+		return this.container.autolinks.getEnrichedAutolinks(this.message ?? this.summary, remote, branchNames);
 		// }
 
 		// const enriched = this.container.cache.getEnrichedAutolinks(this.sha, remote, () => ({

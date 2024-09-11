@@ -237,14 +237,16 @@ export async function getFileRevisionAsCommitTooltip(
 		unpublished?: boolean;
 	},
 ) {
-	const [remotesResult, _] = await Promise.allSettled([
+	const [remotesResult, _, branchNamesResult] = await Promise.allSettled([
 		container.git.getBestRemotesWithProviders(commit.repoPath, options?.cancellation),
 		commit.message == null ? commit.ensureFullDetails() : undefined,
+		container.git.getCommitBranches(commit.repoPath, [commit.sha]),
 	]);
 
 	if (options?.cancellation?.isCancellationRequested) return undefined;
 
 	const remotes = getSettledValue(remotesResult, []);
+	const branchNames = getSettledValue(branchNamesResult, []);
 	const [remote] = remotes;
 
 	let enrichedAutolinks;
@@ -252,7 +254,10 @@ export async function getFileRevisionAsCommitTooltip(
 
 	if (remote?.hasIntegration()) {
 		const [enrichedAutolinksResult, prResult] = await Promise.allSettled([
-			pauseOnCancelOrTimeoutMapTuplePromise(commit.getEnrichedAutolinks(remote), options?.cancellation),
+			pauseOnCancelOrTimeoutMapTuplePromise(
+				commit.getEnrichedAutolinks(remote, branchNames),
+				options?.cancellation,
+			),
 			commit.getAssociatedPullRequest(remote),
 		]);
 
@@ -260,7 +265,7 @@ export async function getFileRevisionAsCommitTooltip(
 		if (!enrichedAutolinksMaybeResult?.paused) {
 			enrichedAutolinks = enrichedAutolinksMaybeResult?.value;
 		}
-		pr = getSettledValue(prResult);
+		// pr = getSettledValue(prResult);
 	}
 
 	const status = StatusFileFormatter.fromTemplate(

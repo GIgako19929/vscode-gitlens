@@ -252,14 +252,16 @@ export class CommitNode extends ViewRefNode<'commit', ViewsWithCommits | FileHis
 	}
 
 	private async getTooltip(cancellation: CancellationToken) {
-		const [remotesResult, _] = await Promise.allSettled([
+		const [remotesResult, _, branchNamesResult] = await Promise.allSettled([
 			this.view.container.git.getBestRemotesWithProviders(this.commit.repoPath, cancellation),
 			this.commit.message == null ? this.commit.ensureFullDetails() : undefined,
+			this.view.container.git.getCommitBranches(this.commit.repoPath, [this.commit.sha]),
 		]);
 
 		if (cancellation.isCancellationRequested) return undefined;
 
 		const remotes = getSettledValue(remotesResult, []);
+		const branchNames = getSettledValue(branchNamesResult, []);
 		const [remote] = remotes;
 
 		let enrichedAutolinks;
@@ -267,7 +269,10 @@ export class CommitNode extends ViewRefNode<'commit', ViewsWithCommits | FileHis
 
 		if (remote?.hasIntegration()) {
 			const [enrichedAutolinksResult, prResult] = await Promise.allSettled([
-				pauseOnCancelOrTimeoutMapTuplePromise(this.commit.getEnrichedAutolinks(remote), cancellation),
+				pauseOnCancelOrTimeoutMapTuplePromise(
+					this.commit.getEnrichedAutolinks(remote, branchNames),
+					cancellation,
+				),
 				this.getAssociatedPullRequest(this.commit, remote),
 			]);
 
@@ -277,7 +282,7 @@ export class CommitNode extends ViewRefNode<'commit', ViewsWithCommits | FileHis
 			if (!enrichedAutolinksMaybeResult?.paused) {
 				enrichedAutolinks = enrichedAutolinksMaybeResult?.value;
 			}
-			pr = getSettledValue(prResult);
+			// pr = getSettledValue(prResult);
 		}
 
 		const tooltip = await CommitFormatter.fromTemplateAsync(this.getTooltipTemplate(), this.commit, {

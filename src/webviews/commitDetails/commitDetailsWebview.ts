@@ -1368,6 +1368,7 @@ export class CommitDetailsWebviewProvider
 		if (commit == null) return;
 
 		const remote = await this.container.git.getBestRemoteWithIntegration(commit.repoPath);
+		const branchNames = await this.container.git.getCommitBranches(commit.repoPath, commit.ref);
 
 		if (cancellation.isCancellationRequested) return;
 
@@ -1376,7 +1377,7 @@ export class CommitDetailsWebviewProvider
 				? await Promise.allSettled([
 						configuration.get('views.commitDetails.autolinks.enabled') &&
 						configuration.get('views.commitDetails.autolinks.enhanced')
-							? pauseOnCancelOrTimeoutMapTuplePromise(commit.getEnrichedAutolinks(remote))
+							? pauseOnCancelOrTimeoutMapTuplePromise(commit.getEnrichedAutolinks(remote, branchNames))
 							: undefined,
 						configuration.get('views.commitDetails.pullRequests.enabled')
 							? commit.getAssociatedPullRequest(remote)

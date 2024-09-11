@@ -45,7 +45,7 @@ export class AutolinkedItemsNode extends CacheableChildrenViewNode<'autolinks', 
 
 				const [enrichedAutolinksResult /*, ...prsResults*/] = await Promise.allSettled([
 					this.view.container.autolinks
-						.getEnrichedAutolinks(combineMessages, remote)
+						.getEnrichedAutolinks(combineMessages, remote, ['bugs/#48'])
 						.then(enriched =>
 							enriched != null ? pauseOnCancelOrTimeoutMapTuple(enriched, undefined, 250) : undefined,
 						),
